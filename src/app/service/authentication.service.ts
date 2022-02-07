@@ -11,24 +11,24 @@ import {JwtHelperService} from "@auth0/angular-jwt";
 export class AuthenticationService {
   public host = environment.apiUrl;
   // @ts-ignore
-  private token: string;
+  private token: string | null;
   // @ts-ignore
-  private loggedInUsername: string;
+  private loggedInUsername: string | null;
   private jwtHelper = new JwtHelperService();
 
   constructor(private http: HttpClient) {
   }
 
-  public login(user: User): Observable<HttpResponse<any> | HttpErrorResponse> {
+  public login(user: User): Observable<HttpResponse<User>> {
     return this
       .http
-      .post<HttpResponse<any> | HttpErrorResponse>(`${this.host}/user/login`, user, {observe: "response"});
+      .post<User>(`${this.host}/user/login`, user, {observe: "response"});
   }
 
-  public register(user: User): Observable<User | HttpErrorResponse> {
+  public register(user: User): Observable<User> {
     return this
       .http
-      .post<User | HttpErrorResponse>(`${this.host}/user/register`, user);
+      .post<User>(`${this.host}/user/register`, user);
   }
 
   public logout(): void {
@@ -39,12 +39,14 @@ export class AuthenticationService {
     localStorage.removeItem("users");
   }
 
-  public saveToken(token: string): void {
+  public saveToken(token: string | null): void {
     this.token = token;
-    localStorage.setItem("token", token);
+    if (typeof token === "string") {
+      localStorage.setItem("token", token);
+    }
   }
 
-  public addUserToLocalCache(user: User): void {
+  public addUserToLocalCache(user: User | null): void {
     localStorage.setItem("user", JSON.stringify(user));
   }
 
@@ -58,7 +60,7 @@ export class AuthenticationService {
     this.token = localStorage.getItem("token");
   }
 
-  public getToken(): string {
+  public getToken(): string | null {
     return this.token;
   }
 
