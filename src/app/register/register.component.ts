@@ -30,7 +30,6 @@ export class RegisterComponent implements OnInit, OnDestroy{
 
   public onRegister(user: User): void {
     this.showLoading = true;
-    console.log(user);
     this.subscriptions.push(
       this.authenticationService
         .register(user)
@@ -41,7 +40,6 @@ export class RegisterComponent implements OnInit, OnDestroy{
             Please check you email for password to log in.`);
           },
           (errorResponse: HttpErrorResponse) => {
-            console.log(errorResponse);
             this.sendNotification(NotificationType.ERROR, errorResponse.error.message)
             this.showLoading = false;
           }
