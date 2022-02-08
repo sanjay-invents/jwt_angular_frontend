@@ -5,6 +5,7 @@ import {UserService} from "../service/user.service";
 import {NotificationService} from "../service/notification.service";
 import {NotificationType} from "../enum/notification-type.enum";
 import {HttpErrorResponse} from "@angular/common/http";
+import {NgForm} from "@angular/forms";
 
 @Component({
   selector: 'app-user',
@@ -17,6 +18,8 @@ export class UserComponent implements OnInit, OnDestroy {
   public users: User[] = [];
   public refreshing: boolean = false;
   public selectedUser: User = new User();
+  public fileName: string = "";
+  public profileImage!: File;
   private subscriptions: Subscription[] = [];
 
   constructor(private userService: UserService, private notificationService: NotificationService) {
@@ -52,8 +55,56 @@ export class UserComponent implements OnInit, OnDestroy {
 
   public onSelectUser(selectedUser: User): void {
     this.selectedUser = selectedUser;
+    this.clickButton("openUserInfo");
+  }
+
+  public onProfileImageChange(event: any): void {
+    this.fileName = event.files[0].name;
+    this.profileImage = event.files[0];
+  }
+
+  public saveNewUser(): void {
+    this.clickButton("new-user-save");
+  }
+
+  public onAddNewUser(userForm: NgForm): void {
     // @ts-ignore
-    document.getElementById("openUserInfo").click();
+    const formData = this.userService.createUserFormData(null, userForm.value, this.profileImage);
+    this.subscriptions.push(
+      this.userService.addUser(formData).subscribe(
+        (response: User) => {
+          this.clickButton("new-user-close");
+          this.getUsers(false);
+          this.fileName = "";
+          // @ts-ignore
+          this.profileImage = null;
+          userForm.reset();
+          this.sendNotification(NotificationType.SUCCESS, `${response.firstName} ${response.lastName} added successfully`);
+        },
+        (errorResponse: HttpErrorResponse) => {
+          this.sendNotification(NotificationType.ERROR, errorResponse.error.message());
+        }
+      )
+    );
+  }
+
+  public searchUsers(searchTerm: string): void {
+    const results: User[] = [];
+    // @ts-ignore
+    for (const user of this.userService.getUsersFromLocalCache()) {
+      if (user.firstName.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1 ||
+        user.lastName.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1 ||
+        user.username.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1 ||
+        user.email.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1 ||
+        user.userId.toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1) {
+        results.push(user);
+      }
+    }
+    this.users = results;
+    if (results.length === 0 || !searchTerm) {
+      // @ts-ignore
+      this.users = this.userService.getUsersFromLocalCache();
+    }
   }
 
   private sendNotification(notificationType: NotificationType, message: string): void {
@@ -62,6 +113,11 @@ export class UserComponent implements OnInit, OnDestroy {
     } else {
       this.notificationService.notify(notificationType, 'An error occurred. Please try again.');
     }
+  }
+
+  private clickButton(buttonId: string): void {
+    // @ts-ignore
+    document.getElementById(buttonId).click();
   }
 
   ngOnDestroy(): void {
