@@ -36,9 +36,9 @@
     <div class="tab-pane fade show active" id="users">
       <div class="mb-3 float-right">
         <div class="btn-group mr-2">
-          <form #searchForm="ngForm" class="form-inline my-2 my-lg-0 justify-content-center">
+          <form class="form-inline my-2 my-lg-0 justify-content-center">
             <input name="searchTerm" #searchInput="ngModel" class="form-control mr-sm-2" ngModel
-                    (ngModelChange)="searchUsers(searchForm.value.searchTerm)" type="search" placeholder="Search users...">
+                    (ngModelChange)="searchUsers(searchInput.value)" type="search" placeholder="Search users...">
           </form>
           <button  type="button" class="btn btn-info" data-toggle="modal" data-target="#addUserModal">
             <i class="fa fa-plus"></i>New User
@@ -79,8 +79,8 @@
           </td>
           <td class="">
             <div class="btn-group">
-              <button class="btn btn-outline-info" ><i class="fas fa-edit"></i></button>
-              <button  class="btn btn-outline-danger" ><i class="fas fa-trash"></i></button>
+              <button class="btn btn-outline-info" (click)="onEditUser(appUser)"><i class="fas fa-edit"></i></button>
+              <button  class="btn btn-outline-danger"><i class="fas fa-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -92,6 +92,26 @@
     </button>
     <button [hidden]="true" type="button" id="openUserEdit" data-toggle="modal" data-target="#editUserModal">
     </button>
+
+    <!-- change password  -->
+    <div class="tab-pane fade" id="reset-password">
+      <form #resetPasswordForm="ngForm" (ngSubmit)="onResetPassword(resetPasswordForm)">
+        <fieldset>
+          <legend>User Password Management</legend>
+          <div class="form-group">
+            <label for="exampleInputEmail1">Email address</label>
+            <input type="email" name="reset-password-email" required ngModel class="form-control"
+                   placeholder="Enter email (example@email.com)" id="exampleInputEmail1">
+            <small class="form-text text-muted">We'll never share your email with anyone else.</small>
+          </div>
+          <button type="submit" [disabled]="resetPasswordForm.invalid" class="btn btn-primary">
+            <i *ngIf="refreshing" class="fas fa-spinner fa-spin"></i>&nbsp;&nbsp;
+            <span *ngIf="refreshing">Loading...</span>
+            <span *ngIf="!refreshing">Reset Password</span>
+          </button>
+        </fieldset>
+      </form>
+    </div>
 
     <!-- modal user info -->
     <div class="modal fade bd-example-modal-lg" id="viewUserModal" tabindex="-1" role="dialog" aria-labelledby=""
@@ -243,6 +263,93 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal" id="new-user-close">Close</button>
             <button type="button" (click)="saveNewUser()" [disabled]="newUserForm.invalid" class="btn btn-primary">Save changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- modal edit user -->
+    <div class="modal draggable fade bd-example-modal-lg" id="editUserModal" tabindex="-1"
+         role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title text-center">Edit {{editUser?.firstName}}
+              {{editUser?.lastName}} <small>
+                (read only)
+              </small></h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="">
+              <form #editUserForm="ngForm">
+                <div class="form-group">
+                  <label for="firstName">First Name</label>
+                  <input type="text" name="firstName" required
+                         [(ngModel)]="editUser.firstName" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label for="lastName">Last Name</label>
+                  <input type="text" name="lastName" required
+                         [(ngModel)]="editUser.lastName" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label for="username">Username</label>
+                  <input type="text" name="username" required
+                         [(ngModel)]="editUser.username" class="form-control">
+                </div>
+                <div class="form-group">
+                  <label for="email">Email</label>
+                  <input type="email" name="email" required [(ngModel)]="editUser.email"
+                         class="form-control">
+                </div>
+                <div class="form-group">
+                  <label for="authority">Role <small>(read only)</small></label>
+                  <select name="role" required [(ngModel)]="editUser.role" class="form-control" id="authority">
+                    <option value="ROLE_USER">USER</option>
+                    <option value="ROLE_HR">HR</option>
+                    <option value="ROLE_MANAGER">MANAGER</option>
+                    <option value="ROLE_ADMIN">ADMIN</option>
+                    <option value="ROLE_SUPER_ADMIN">SUPER ADMIN</option>
+                  </select>
+                </div>
+                <div class="input-group mb-2">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text">Profile Picture </span>
+                  </div>
+                  <div class="custom-file">
+                    <input type="file" accept="image/*" name="profileImage"
+                           (change)="onProfileImageChange($event.target)"
+                           class="custom-file-input">
+                    <label class="custom-file-label"><span [hidden]="!fileName">{{fileName}}</span>
+                      <span [hidden]="fileName">Choose File</span>
+                    </label>
+                  </div>
+                </div>
+                <fieldset class="form-group">
+                  <div class="form-check">
+                    <label class="form-check-label">
+                      <input name="active" type="checkbox" [(ngModel)]="editUser.active"
+                             class="form-check-input">
+                      Acitve <small>(read only)</small>
+                    </label>
+                  </div>
+                  <div class="form-check disabled">
+                    <label class="form-check-label">
+                      <input name="locked" type="checkbox"[(ngModel)]="editUser.notLocked"
+                             class="form-check-input">
+                      Unlocked <small>(read only)</small>
+                    </label>
+                  </div>
+                </fieldset>
+              </form>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal" id="closeEditUserModalButton">Close</button>
+            <button type="button" (click)="onUpdateUser()" [disabled]="editUserForm.invalid" class="btn btn-primary">Save changes</button>
           </div>
         </div>
       </div>

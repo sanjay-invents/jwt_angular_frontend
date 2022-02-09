@@ -6,6 +6,7 @@ import {NotificationService} from "../service/notification.service";
 import {NotificationType} from "../enum/notification-type.enum";
 import {HttpErrorResponse} from "@angular/common/http";
 import {NgForm} from "@angular/forms";
+import {CustomHttpResponse} from "../model/custom-http-response";
 
 @Component({
   selector: 'app-user',
@@ -20,6 +21,8 @@ export class UserComponent implements OnInit, OnDestroy {
   public selectedUser: User = new User();
   public fileName: string = "";
   public profileImage!: File;
+  public editUser = new User();
+  private currentUsername: string = "";
   private subscriptions: Subscription[] = [];
 
   constructor(private userService: UserService, private notificationService: NotificationService) {
@@ -83,6 +86,8 @@ export class UserComponent implements OnInit, OnDestroy {
         },
         (errorResponse: HttpErrorResponse) => {
           this.sendNotification(NotificationType.ERROR, errorResponse.error.message());
+          // @ts-ignore
+          this.profileImage = null;
         }
       )
     );
@@ -105,6 +110,66 @@ export class UserComponent implements OnInit, OnDestroy {
       // @ts-ignore
       this.users = this.userService.getUsersFromLocalCache();
     }
+  }
+
+  public onEditUser(editUser: User): void {
+    this.editUser = editUser;
+    this.currentUsername = editUser.username;
+    this.clickButton("openUserEdit");
+  }
+
+  public onUpdateUser(): void {
+    // @ts-ignore
+    const formData = this.userService.createUserFormData(this.currentUsername, this.editUser, this.profileImage);
+    this.subscriptions.push(
+      this.userService.updateUser(formData).subscribe(
+        (response: User) => {
+          this.clickButton("closeEditUserModalButton");
+          this.getUsers(false);
+          this.fileName = "";
+          // @ts-ignore
+          this.profileImage = null;
+          this.sendNotification(NotificationType.SUCCESS, `${response.firstName} ${response.lastName} updated successfully`);
+        },
+        (errorResponse: HttpErrorResponse) => {
+          this.sendNotification(NotificationType.ERROR, errorResponse.error.message());
+          // @ts-ignore
+          this.profileImage = null;
+        }
+      )
+    );
+  }
+
+  public onDeleteUser(userId: number): void {
+    this.subscriptions.push(
+      this.userService.deleteUser(userId).subscribe(
+        (response: CustomHttpResponse) => {
+          this.sendNotification(NotificationType.SUCCESS, response.message);
+          this.getUsers(true);
+        },
+        (errorResponse: HttpErrorResponse) => {
+          this.sendNotification(NotificationType.ERROR, errorResponse.error.message());
+        }
+      )
+    );
+  }
+
+  public onResetPassword(emailForm: NgForm): void {
+    this.refreshing = true;
+    const emailAddress = emailForm.value["reset-password-email"];
+    this.subscriptions.push(
+      this.userService.resetPassword(emailAddress).subscribe(
+        (response: CustomHttpResponse) => {
+          this.sendNotification(NotificationType.SUCCESS, response.message);
+          this.refreshing = false;
+        },
+        (error: HttpErrorResponse) => {
+          this.sendNotification(NotificationType.WARNING, error.error.message);
+          this.refreshing = false;
+        },
+        () => emailForm.reset()
+      )
+    );
   }
 
   private sendNotification(notificationType: NotificationType, message: string): void {
