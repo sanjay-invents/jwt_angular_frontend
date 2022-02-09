@@ -10,6 +10,8 @@ import {CustomHttpResponse} from "../model/custom-http-response";
 import {AuthenticationService} from "../service/authentication.service";
 import {Router} from "@angular/router";
 import {FileUploadStatus} from "../model/file-upload.status";
+import {Role} from "../enum/role.enum";
+import {SubSink} from "subsink";
 
 @Component({
   selector: 'app-user',
@@ -17,6 +19,7 @@ import {FileUploadStatus} from "../model/file-upload.status";
   styleUrls: ['./user.component.css']
 })
 export class UserComponent implements OnInit, OnDestroy {
+  private subs = new SubSink();
   private titleSubject = new BehaviorSubject<string>('Users');
   public titleAction$ = this.titleSubject.asObservable();
   public users: User[] = [];
@@ -28,7 +31,6 @@ export class UserComponent implements OnInit, OnDestroy {
   public editUser = new User();
   public fileStatus = new FileUploadStatus();
   private currentUsername: string = "";
-  private subscriptions: Subscription[] = [];
 
   constructor(private userService: UserService,
               private notificationService: NotificationService,
@@ -47,7 +49,7 @@ export class UserComponent implements OnInit, OnDestroy {
 
   public getUsers(showNotification: boolean): void {
     this.refreshing = true;
-    this.subscriptions.push(
+    this.subs.add(
       this.userService.getUsers().subscribe(
         (response: User[]) => {
           this.userService.addUsersToLocalCache(response);
@@ -82,7 +84,7 @@ export class UserComponent implements OnInit, OnDestroy {
   public onAddNewUser(userForm: NgForm): void {
     // @ts-ignore
     const formData = this.userService.createUserFormData(null, userForm.value, this.profileImage);
-    this.subscriptions.push(
+    this.subs.add(
       this.userService.addUser(formData).subscribe(
         (response: User) => {
           this.clickButton("new-user-close");
@@ -130,7 +132,7 @@ export class UserComponent implements OnInit, OnDestroy {
   public onUpdateUser(): void {
     // @ts-ignore
     const formData = this.userService.createUserFormData(this.currentUsername, this.editUser, this.profileImage);
-    this.subscriptions.push(
+    this.subs.add(
       this.userService.updateUser(formData).subscribe(
         (response: User) => {
           this.clickButton("closeEditUserModalButton");
@@ -141,7 +143,7 @@ export class UserComponent implements OnInit, OnDestroy {
           this.sendNotification(NotificationType.SUCCESS, `${response.firstName} ${response.lastName} updated successfully`);
         },
         (errorResponse: HttpErrorResponse) => {
-          this.sendNotification(NotificationType.ERROR, errorResponse.error.message());
+          this.sendNotification(NotificationType.ERROR, errorResponse.error.message);
           // @ts-ignore
           this.profileImage = null;
         }
@@ -150,14 +152,14 @@ export class UserComponent implements OnInit, OnDestroy {
   }
 
   public onDeleteUser(username: string): void {
-    this.subscriptions.push(
+    this.subs.add(
       this.userService.deleteUser(username).subscribe(
         (response: CustomHttpResponse) => {
           this.sendNotification(NotificationType.SUCCESS, `User deleted`);
           this.getUsers(true);
         },
         (errorResponse: HttpErrorResponse) => {
-          this.sendNotification(NotificationType.ERROR, errorResponse.error.message());
+          this.sendNotification(NotificationType.ERROR, errorResponse.error.message);
         }
       )
     );
@@ -168,7 +170,7 @@ export class UserComponent implements OnInit, OnDestroy {
     this.currentUsername = this.authenticationService.getUserFromLocalCache().username;
     // @ts-ignore
     const formData = this.userService.createUserFormData(this.currentUsername, user, this.profileImage);
-    this.subscriptions.push(
+    this.subs.add(
       this.userService.updateUser(formData).subscribe(
         (response: User) => {
           this.authenticationService.addUserToLocalCache(response);
@@ -180,7 +182,7 @@ export class UserComponent implements OnInit, OnDestroy {
           this.sendNotification(NotificationType.SUCCESS, `${response.firstName} ${response.lastName} updated successfully`);
         },
         (errorResponse: HttpErrorResponse) => {
-          this.sendNotification(NotificationType.ERROR, errorResponse.error.message());
+          this.sendNotification(NotificationType.ERROR, errorResponse.error.message);
           // @ts-ignore
           this.profileImage = null;
           this.refreshing = false;
@@ -193,7 +195,7 @@ export class UserComponent implements OnInit, OnDestroy {
     const formData = new FormData();
     formData.append("username", this.user.username);
     formData.append("profileImage", this.profileImage);
-    this.subscriptions.push(
+    this.subs.add(
       this.userService.updateProfileImage(formData).subscribe(
         (event: HttpEvent<any>) => {
           this.reportUploadProgress(event);
@@ -219,7 +221,7 @@ export class UserComponent implements OnInit, OnDestroy {
   public onResetPassword(emailForm: NgForm): void {
     this.refreshing = true;
     const emailAddress = emailForm.value["reset-password-email"];
-    this.subscriptions.push(
+    this.subs.add(
       this.userService.resetPassword(emailAddress).subscribe(
         (response: CustomHttpResponse) => {
           this.sendNotification(NotificationType.SUCCESS, response.message);
@@ -232,6 +234,22 @@ export class UserComponent implements OnInit, OnDestroy {
         () => emailForm.reset()
       )
     );
+  }
+
+  public get isAdmin(): boolean {
+    return this.getUserRole() === Role.ADMIN || this.getUserRole() === Role.SUPER_ADMIN;
+  }
+
+  public get isManager(): boolean {
+    return this.isAdmin || this.getUserRole() === Role.MANAGER;
+  }
+
+  public get isAdminOrManager(): boolean {
+    return this.isAdmin || this.isManager;
+  }
+
+  private getUserRole(): string {
+    return this.authenticationService.getUserFromLocalCache().role;
   }
 
   private reportUploadProgress(event: HttpEvent<any>): void {
@@ -269,7 +287,7 @@ export class UserComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.subs.unsubscribe();
   }
 
 }

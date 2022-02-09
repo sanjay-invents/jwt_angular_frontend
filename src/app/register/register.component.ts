@@ -3,9 +3,9 @@ import {Router} from "@angular/router";
 import {AuthenticationService} from "../service/authentication.service";
 import {NotificationService} from "../service/notification.service";
 import {User} from "../model/user";
-import {Subscription} from "rxjs";
 import {HttpErrorResponse} from "@angular/common/http";
 import {NotificationType} from "../enum/notification-type.enum";
+import {SubSink} from "subsink";
 
 @Component({
   selector: 'app-register',
@@ -13,9 +13,8 @@ import {NotificationType} from "../enum/notification-type.enum";
   styleUrls: ['./register.component.css']
 })
 export class RegisterComponent implements OnInit, OnDestroy{
-
+  private subs = new SubSink();
   public showLoading: boolean = false;
-  private subscriptions: Subscription[] = [];
 
   constructor(private router: Router,
               private authenticationService: AuthenticationService,
@@ -30,7 +29,7 @@ export class RegisterComponent implements OnInit, OnDestroy{
 
   public onRegister(user: User): void {
     this.showLoading = true;
-    this.subscriptions.push(
+    this.subs.add(
       this.authenticationService
         .register(user)
         .subscribe(
@@ -56,7 +55,7 @@ export class RegisterComponent implements OnInit, OnDestroy{
   }
 
   ngOnDestroy(): void {
-    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.subs.unsubscribe();
   }
 
 }
