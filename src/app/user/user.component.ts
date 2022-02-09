@@ -149,11 +149,11 @@ export class UserComponent implements OnInit, OnDestroy {
     );
   }
 
-  public onDeleteUser(userId: number): void {
+  public onDeleteUser(username: string): void {
     this.subscriptions.push(
-      this.userService.deleteUser(userId).subscribe(
+      this.userService.deleteUser(username).subscribe(
         (response: CustomHttpResponse) => {
-          this.sendNotification(NotificationType.SUCCESS, response.message);
+          this.sendNotification(NotificationType.SUCCESS, `User deleted`);
           this.getUsers(true);
         },
         (errorResponse: HttpErrorResponse) => {
